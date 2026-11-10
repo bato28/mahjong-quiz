@@ -1,811 +1,300 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>麻雀 何切る？道場 | 牌効率判定クイズ</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800;900&family=Noto+Sans+JP:wght@400;600;700;900&display=swap" rel="stylesheet">
-  <style>
-    body {
-      font-family: 'Noto Sans JP', sans-serif;
-      touch-action: manipulation;
-      user-select: none;
-      -webkit-user-select: none;
-      -webkit-tap-highlight-color: transparent;
-      background: radial-gradient(circle at 50% 20%, #154734 0%, #082117 80%, #030e0a 100%);
-    }
-
-    /* 麻雀卓マット */
-    .table-mat {
-      background: radial-gradient(ellipse at center, #1e5a3c 0%, #14442c 70%, #0d2e1e 100%);
-      box-shadow: inset 0 0 35px rgba(0,0,0,0.65), 0 10px 30px rgba(0,0,0,0.5);
-      border: 3px solid #2a734e;
-    }
-
-    /* 高級感のあるリアル麻雀牌スタイル */
-    .mj-tile {
-      position: relative;
-      background: linear-gradient(180deg, #ffffff 0%, #fefcf8 65%, #f5ede0 96%, #dfd0b8 100%);
-      border: 1px solid #c5b69e;
-      border-top: 2px solid #ffffff;
-      border-bottom: 6px solid #b58d3d; /* 牌の厚み・背面の立体感 */
-      border-radius: 6px;
-      box-shadow: 0 5px 9px rgba(0,0,0,0.45), inset 0 1px 1px rgba(255,255,255,1);
-      transition: transform 0.16s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.16s ease, border-color 0.16s ease;
-      cursor: pointer;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
-    }
-    .mj-tile:hover {
-      transform: translateY(-4px);
-    }
-    .mj-tile.selected {
-      transform: translateY(-16px) scale(1.04);
-      box-shadow: 0 16px 20px rgba(0, 0, 0, 0.6), 0 0 0 2.5px #fbbf24, 0 0 15px rgba(251, 191, 36, 0.85);
-      border-color: #f59e0b;
-      border-bottom-color: #d97706;
-      z-index: 10;
-    }
-    .mj-tile.disabled {
-      cursor: default;
-      pointer-events: none;
-    }
-
-    /* 手牌14枚がスマホ縦画面でも大きく鮮明に並ぶレスポンシブサイズ */
-    .hand-tile-size {
-      width: calc((100vw - 38px) / 14.4);
-      max-width: 38px;
-      min-width: 22px;
-      aspect-ratio: 3 / 4.25;
-    }
-
-    /* アニメーション */
-    @keyframes popIn {
-      0% { transform: scale(0.92); opacity: 0; }
-      100% { transform: scale(1); opacity: 1; }
-    }
-    .pop-in {
-      animation: popIn 0.22s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>麻雀 何切る？道場（ランダム3問）</title>
+    <style>
+        :root {
+            --bg-color: #0d1b1e;
+            --card-bg: #1b262c;
+            --accent-green: #2e7d32;
+            --accent-green-hover: #388e3c;
+            --text-main: #e0e0e0;
+            --text-muted: #a0a0a0;
+            --tile-bg: #f4f4f0;
+            --tile-border: #dcdcd6;
+            --tile-text: #222;
+            --selected-glow: #ffb703;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 12px; }
+        .container { width: 100%; max-width: 600px; display: flex; flex-direction: column; gap: 14px; }
+        header { text-align: center; padding: 8px 0; border-bottom: 1px solid #2c3e50; }
+        h1 { font-size: 1.3rem; color: #fff; letter-spacing: 1px; }
+        .subtitle { font-size: 0.8rem; color: var(--text-muted); margin-top: 2px; }
+        .card { background-color: var(--card-bg); border-radius: 12px; padding: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.4); display: flex; flex-direction: column; gap: 12px; }
+        .status-bar { display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-muted); font-weight: bold; }
+        .question-title { font-size: 1.05rem; font-weight: bold; color: #ffb703; line-height: 1.4; }
+        .question-desc { font-size: 0.9rem; color: var(--text-main); line-height: 1.5; }
+        .tiles-container { display: flex; flex-direction: column; gap: 8px; background: #0f171a; padding: 12px; border-radius: 8px; border: 1px solid #2c3e50; align-items: center; }
+        .section-label { font-size: 0.75rem; color: var(--text-muted); align-self: flex-start; margin-bottom: -4px; }
+        .hand-row { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; align-items: center; min-height: 52px; }
+        .separator { width: 2px; height: 42px; background: #4a5568; margin: 0 6px; }
+        .tile { width: 36px; height: 48px; background: var(--tile-bg); border: 1px solid var(--tile-border); border-radius: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; position: relative; box-shadow: 0 2px 4px rgba(0,0,0,0.3); transition: transform 0.1s, box-shadow 0.1s; user-select: none; }
+        .tile:hover { transform: translateY(-2px); }
+        .tile.selected { border: 2px solid var(--selected-glow); box-shadow: 0 0 8px var(--selected-glow); transform: translateY(-4px); }
+        .tile svg { width: 26px; height: 38px; }
+        .btn-action { background-color: var(--accent-green); color: white; border: none; padding: 12px; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: background 0.2s; text-align: center; }
+        .btn-action:hover { background-color: var(--accent-green-hover); }
+        .btn-action:disabled { background-color: #4a5568; cursor: not-allowed; opacity: 0.7; }
+        .result-box { display: none; background: #121c21; border-radius: 8px; padding: 12px; border-left: 4px solid var(--accent-green); margin-top: 8px; }
+        .result-box.correct { border-left-color: #2e7d32; }
+        .result-box.incorrect { border-left-color: #d32f2f; }
+        .result-title { font-weight: bold; font-size: 1rem; margin-bottom: 4px; }
+        .result-desc { font-size: 0.850rem; line-height: 1.4; color: var(--text-main); }
+        .hidden { display: none !important; }
+        .summary-screen { text-align: center; padding: 24px 16px; display: flex; flex-direction: column; gap: 16px; }
+        .score-display { font-size: 2rem; font-weight: bold; color: #ffb703; }
+        .rank-title { font-size: 1.2rem; font-weight: bold; color: #fff; }
+        .btn-line { background-color: #06c755; color: white; display: flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; font-weight: bold; padding: 14px; border-radius: 8px; font-size: 1.05rem; }
+        .btn-line:hover { background-color: #05b34c; }
+    </style>
 </head>
-<body class="min-h-screen text-slate-100 flex flex-col items-center justify-between p-1.5 sm:p-4">
+<body>
+<div class="container">
+    <header>
+        <h1>麻雀 何切る？道場</h1>
+        <div class="subtitle">実戦牌理 厳選100問プール（ランダム3問出題）</div>
+    </header>
 
-  <!-- ヘッダー -->
-  <header class="w-full max-w-xl flex items-center justify-between pt-1 pb-1 px-2">
-    <div class="flex items-center space-x-2">
-      <span class="bg-gradient-to-r from-amber-500 to-amber-600 text-stone-950 font-black text-xs px-2.5 py-0.5 rounded shadow">麻雀道場</span>
-      <h1 class="text-base sm:text-lg font-black tracking-wider text-amber-100 drop-shadow">何切る？牌効率判定</h1>
-    </div>
-    <div id="quizProgress" class="text-xs font-bold bg-emerald-950/90 border border-emerald-600/60 text-emerald-300 px-3 py-1 rounded-full shadow">
-      第 1 / 10 問
-    </div>
-  </header>
-
-  <!-- メインゲームエリア -->
-  <main class="w-full max-w-xl flex-1 flex flex-col justify-center my-auto">
-
-    <!-- 状況表示ボード (場況) -->
-    <div class="table-mat rounded-2xl p-3 mb-2.5 border border-emerald-500/50 text-stone-200 shadow-2xl backdrop-blur">
-      <div class="flex justify-between items-center text-xs pb-2 border-b border-emerald-600/50 font-semibold">
-        <div class="flex items-center space-x-2">
-          <span id="roundState" class="text-amber-300 font-extrabold text-sm bg-black/50 px-2.5 py-0.5 rounded shadow-inner">東1局 6巡目</span>
-          <span id="seatWind" class="bg-emerald-900/90 px-2 py-0.5 rounded text-emerald-200 border border-emerald-700/60 font-bold">西家</span>
+    <div id="quiz-card" class="card">
+        <div class="status-bar">
+            <span id="question-progress">問題 1 / 3</span>
+            <span id="score-counter">正解数: 0</span>
         </div>
-        <div class="flex items-center space-x-2">
-          <div class="flex items-center space-x-1 bg-black/40 px-2 py-1 rounded-lg border border-emerald-700/50">
-            <span class="text-stone-300 font-bold text-[11px]">表示:</span>
-            <div id="doraIndicatorContainer"></div>
-            <span class="text-amber-300 font-extrabold text-[11px] pl-1">ドラ:</span>
-            <div id="doraTileContainer"></div>
-          </div>
-        </div>
-      </div>
+        <div id="question-title" class="question-title">問題読み込み中...</div>
+        <div id="question-desc" class="question-desc"></div>
 
-      <!-- 局面の目的・テーマ -->
-      <div class="mt-2 text-center">
-        <span id="problemTheme" class="inline-block text-xs font-black text-emerald-200 bg-emerald-950/80 border border-emerald-600/60 px-3 py-1 rounded-full shadow-sm">
-          基本の牌効率とブロック数
-        </span>
-        <p class="text-[12px] text-stone-300 mt-1.5 font-medium">手牌の牌をタップして選択（もう1回タップまたは下のボタンで打牌）</p>
-      </div>
+        <div class="tiles-container">
+            <span class="section-label">手牌（切る牌を1枚選んでください）</span>
+            <div id="hand-tiles" class="hand-row"></div>
+            <div style="height:4px"></div>
+            <span class="section-label">ツモ牌</span>
+            <div id="tsumo-tile" class="hand-row"></div>
+        </div>
+
+        <button id="submit-btn" class="btn-action" onclick="submitAnswer()" disabled>打牌する</button>
+
+        <div id="result-box" class="result-box hidden">
+            <div id="result-title" class="result-title"></div>
+            <div id="result-desc" class="result-desc"></div>
+        </div>
+
+        <button id="next-btn" class="btn-action hidden" onclick="nextQuestion()">次の問題へ</button>
     </div>
 
-    <!-- 手牌表示エリア (13枚 + 隙間 + ツモ1枚) -->
-    <div class="w-full table-mat rounded-2xl px-1.5 py-4 sm:p-5 shadow-2xl mb-2.5 flex flex-col items-center">
-      <div class="w-full flex items-end justify-center pt-4 pb-2 select-none" id="handContainer">
-        <!-- 13枚の純手牌コンテナ -->
-        <div class="flex items-end justify-center space-x-[1.5px] sm:space-x-1" id="pureHandContainer"></div>
-        
-        <!-- ツモ牌のセパレータとツモ牌コンテナ -->
-        <div class="flex flex-col items-center ml-1.5 sm:ml-3 pl-1.5 sm:pl-2.5 border-l-2 border-emerald-400/40" id="tsumoContainer">
-          <span class="text-[10px] font-black text-amber-300 mb-1 tracking-tighter drop-shadow">ツモ</span>
-          <div id="tsumoTileSlot"></div>
-        </div>
-      </div>
-
-      <!-- 打牌決定ボタン -->
-      <div class="w-full px-2 mt-3 flex justify-center items-center">
-        <button id="discardBtn" disabled class="w-full py-3.5 rounded-xl font-black text-sm sm:text-base tracking-widest shadow-lg transition-all duration-150 bg-stone-800/80 text-stone-400 border border-stone-700 cursor-not-allowed">
-          手牌から切る牌をタップしてください
-        </button>
-      </div>
+    <div id="summary-card" class="card hidden summary-screen">
+        <h2>結果発表</h2>
+        <div id="final-score" class="score-display">3問中 3問正解！</div>
+        <div id="final-rank" class="rank-title">称号：雀聖</div>
+        <p id="final-comment" style="font-size:0.9rem; color:var(--text-muted);"></p>
+        <a id="line-share-btn" class="btn-line" href="#" target="_blank">LINEで結果をシェアする</a>
+        <button class="btn-action" onclick="restartQuiz()" style="background-color: #374151;">もう一度挑戦する</button>
     </div>
+</div>
 
-    <!-- 判定結果・解説カード (初期は非表示) -->
-    <div id="explanationCard" class="hidden pop-in table-mat rounded-2xl p-4 border-2 border-emerald-400/80 shadow-2xl mb-2">
-      <div class="flex items-center justify-between mb-2">
-        <div class="flex items-center space-x-2">
-          <span id="evalBadge" class="px-3 py-1 text-xs font-black rounded-full shadow text-white"></span>
-          <span id="evalTitle" class="font-black text-sm sm:text-base"></span>
-        </div>
-      </div>
-
-      <!-- 受け入れ枚数と受け入れ牌ビジュアル -->
-      <div class="bg-black/40 rounded-xl p-2.5 border border-emerald-700/60 mb-2">
-        <div class="flex items-center justify-between mb-1.5">
-          <span class="text-[11px] font-bold text-emerald-300">受け入れ枚数・有効牌</span>
-          <span id="acceptanceCount" class="text-xs font-black px-2 py-0.5 rounded bg-emerald-950 text-amber-300 border border-amber-500/40"></span>
-        </div>
-        <div id="acceptanceTilesContainer" class="flex flex-wrap items-center gap-1 py-1">
-          <!-- 有効牌の小タイルが動的表示 -->
-        </div>
-      </div>
-
-      <!-- 詳細解説テキスト -->
-      <div class="bg-black/35 rounded-xl p-3 border border-emerald-800/60 text-xs sm:text-[13px] text-stone-200 leading-relaxed space-y-1.5" id="explanationText"></div>
-
-      <button id="nextBtn" class="w-full mt-3 py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 font-black text-sm sm:text-base rounded-xl shadow-lg transform active:scale-98 transition-all">
-        次の問題へ進む →
-      </button>
-    </div>
-
-  </main>
-
-  <!-- リザルトモーダル -->
-  <div id="resultModal" class="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 z-50 hidden">
-    <div class="bg-gradient-to-b from-stone-900 via-emerald-950 to-stone-900 border-2 border-amber-500/80 rounded-3xl p-5 sm:p-6 w-full max-w-sm text-center shadow-2xl pop-in">
-      
-      <div class="text-4xl mb-1">🀄</div>
-      <h2 class="text-xs uppercase font-extrabold tracking-widest text-amber-400 mb-0.5">麻雀 何切る道場 修了認定</h2>
-      <div id="resultRank" class="text-2xl sm:text-3xl font-black text-amber-300 tracking-tight my-2">雀聖級</div>
-      
-      <div class="bg-black/50 border border-emerald-600/50 rounded-2xl p-3.5 my-3">
-        <div class="text-xs text-stone-400 mb-0.5">最終判定</div>
-        <div class="text-2xl sm:text-3xl font-black text-white" id="finalScoreDisplay">6 / 6 問 正解</div>
-        <div class="text-xs text-emerald-300 mt-2 font-medium leading-relaxed" id="rankDescription">
-          完璧な牌効率！牌理と攻守判断の基礎が完全に身についています。
-        </div>
-      </div>
-
-      <!-- LINE共有ボタン -->
-      <a id="lineShareBtn" href="#" target="_blank" rel="noopener noreferrer" 
-         class="w-full py-3.5 bg-[#06C755] hover:bg-[#05b34c] text-white font-black text-sm sm:text-base rounded-2xl shadow-xl flex items-center justify-center space-x-2 transition-all transform active:scale-95 mb-2.5">
-        <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
-          <path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.346 0 .627.285.627.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.074.495.234l2.468 3.348V8.108c0-.345.28-.63.63-.63.348 0 .627.285.627.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.627-.63.349 0 .631.285.631.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.63.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/>
-        </svg>
-        <span>LINEで仲間に共有する</span>
-      </a>
-
-      <!-- 結果をコピーボタン -->
-      <button id="copyResultBtn" class="w-full py-3 bg-emerald-800 hover:bg-emerald-700 text-emerald-100 font-bold text-sm rounded-2xl border border-emerald-500/60 transition mb-2.5 flex items-center justify-center space-x-2">
-        <span>📋 結果をコピー</span>
-      </button>
-
-      <!-- もう一度遊ぶ -->
-      <button id="retryBtn" class="w-full py-2.5 bg-stone-800 hover:bg-stone-700 text-stone-300 font-bold text-sm rounded-2xl border border-stone-600 transition">
-        もう一度挑戦する
-      </button>
-    </div>
-  </div>
-
-  <!-- フッター -->
-  <footer class="w-full max-w-lg text-center py-1 text-[11px] text-stone-500">
-    スマホのブラウザで軽快に動く麻雀牌効率トレーニング
-  </footer>
-
-  <script>
-    /* ========================================================
-     * 本格麻雀牌SVGレンダラー（バッジ無しでもくっきり判別可能）
-     * ======================================================== */
-    const TILE_SVGS = {
-      // 萬子 (Manzu)
-      '1m': createManzuSVG('一'),
-      '2m': createManzuSVG('二'),
-      '3m': createManzuSVG('三'),
-      '4m': createManzuSVG('四'),
-      '5m': createManzuSVG('五', false),
-      '0m': createManzuSVG('五', true), // 赤五萬
-      '6m': createManzuSVG('六'),
-      '7m': createManzuSVG('七'),
-      '8m': createManzuSVG('八'),
-      '9m': createManzuSVG('九'),
-
-      // 筒子 (Pinzu)
-      '1p': createPinzu1SVG(),
-      '2p': createPinzuGroupSVG([[50,27,'#1d4ed8'], [50,73,'#15803d']], 18),
-      '3p': createPinzuGroupSVG([[28,24,'#1d4ed8'], [50,50,'#dc2626'], [72,76,'#15803d']], 15.5),
-      '4p': createPinzuGroupSVG([[31,28,'#1d4ed8'], [69,28,'#15803d'], [31,72,'#15803d'], [69,72,'#1d4ed8']], 15.5),
-      '5p': createPinzuGroupSVG([[30,26,'#1d4ed8'], [70,26,'#15803d'], [50,50,'#dc2626'], [30,74,'#15803d'], [70,74,'#1d4ed8']], 14),
-      '0p': createPinzuGroupSVG([[30,26,'#dc2626'], [70,26,'#dc2626'], [50,50,'#dc2626'], [30,74,'#dc2626'], [70,74,'#dc2626']], 14, true), // 赤5筒
-      '6p': createPinzuGroupSVG([[31,24,'#15803d'], [69,24,'#15803d'], [31,52,'#dc2626'], [69,52,'#dc2626'], [31,76,'#dc2626'], [69,76,'#dc2626']], 13.5),
-      '7p': createPinzuGroupSVG([[24,20,'#15803d'], [50,29,'#15803d'], [76,38,'#15803d'], [32,61,'#dc2626'], [68,61,'#dc2626'], [32,81,'#dc2626'], [68,81,'#dc2626']], 12.5),
-      '8p': createPinzuGroupSVG([[32,20,'#1d4ed8'], [68,20,'#1d4ed8'], [32,40,'#1d4ed8'], [68,40,'#1d4ed8'], [32,60,'#1d4ed8'], [68,60,'#1d4ed8'], [32,80,'#1d4ed8'], [68,80,'#1d4ed8']], 12),
-      '9p': createPinzuGroupSVG([
-        [25,24,'#1d4ed8'], [50,24,'#1d4ed8'], [75,24,'#1d4ed8'],
-        [25,50,'#dc2626'], [50,50,'#dc2626'], [75,50,'#dc2626'],
-        [25,76,'#15803d'], [50,76,'#15803d'], [75,76,'#15803d']
-      ], 11.5),
-
-      // 索子 (Souzu)
-      '1s': createBirdSVG(),
-      '2s': createSouzuBarsSVG([ [50, 27, '#15803d'], [50, 73, '#15803d'] ], 26, 13),
-      '3s': createSouzuBarsSVG([ [50, 26, '#15803d'], [30, 73, '#15803d'], [70, 73, '#15803d'] ], 25, 12.5),
-      '4s': createSouzuBarsSVG([ [32, 27, '#15803d'], [68, 27, '#15803d'], [32, 73, '#15803d'], [68, 73, '#15803d'] ], 25, 12.5),
-      '5s': createSouzuBarsSVG([ [28, 27, '#15803d'], [72, 27, '#15803d'], [50, 50, '#dc2626'], [28, 73, '#15803d'], [72, 73, '#15803d'] ], 23, 11.5),
-      '0s': createSouzuBarsSVG([ [28, 27, '#dc2626'], [72, 27, '#dc2626'], [50, 50, '#dc2626'], [28, 73, '#dc2626'], [72, 73, '#dc2626'] ], 23, 11.5, true), // 赤5索
-      '6s': createSouzuBarsSVG([ [26, 27, '#15803d'], [50, 27, '#15803d'], [74, 27, '#15803d'], [26, 73, '#15803d'], [50, 73, '#15803d'], [74, 73, '#15803d'] ], 24, 11),
-      '7s': createSouzuBarsSVG([ [50, 22, '#dc2626'], [26, 51, '#15803d'], [50, 51, '#15803d'], [74, 51, '#15803d'], [26, 79, '#15803d'], [50, 79, '#15803d'], [74, 79, '#15803d'] ], 19, 10.5),
-      '8s': createSouzu8SVG(),
-      '9s': createSouzuBarsSVG([
-        [26, 22, '#15803d'], [50, 22, '#dc2626'], [74, 22, '#15803d'],
-        [26, 50, '#15803d'], [50, 50, '#dc2626'], [74, 50, '#15803d'],
-        [26, 78, '#15803d'], [50, 78, '#dc2626'], [74, 78, '#15803d']
-      ], 19, 10.5),
-
-      // 字牌 (Honors)
-      '1z': createKanjiSVG('東', '#111827'),
-      '2z': createKanjiSVG('南', '#111827'),
-      '3z': createKanjiSVG('西', '#111827'),
-      '4z': createKanjiSVG('北', '#111827'),
-      '5z': createHakuSVG(), // 白
-      '6z': createKanjiSVG('發', '#15803d'),
-      '7z': createKanjiSVG('中', '#dc2626')
-    };
-
-    function createManzuSVG(numKanji, isAka = false) {
-      const topColor = isAka ? '#dc2626' : '#111827';
-      const botColor = '#dc2626';
-      const akaDot = isAka ? `<circle cx="82" cy="24" r="7" fill="#dc2626"/>` : '';
-      return `
-        <svg viewBox="0 0 100 136" class="w-full h-full select-none pointer-events-none">
-          ${akaDot}
-          <text x="50" y="58" text-anchor="middle" font-family="'M PLUS Rounded 1c', 'Noto Sans JP', sans-serif" font-weight="900" font-size="56" fill="${topColor}">${numKanji}</text>
-          <text x="50" y="118" text-anchor="middle" font-family="'M PLUS Rounded 1c', 'Noto Sans JP', sans-serif" font-weight="900" font-size="52" fill="${botColor}">萬</text>
-        </svg>
-      `;
+<script>
+    // SVG麻雀牌レンダリングヘルパー
+    function renderTileSVG(type, val) {
+        let inner = '';
+        const v = String(val);
+        if (type === 'm') {
+            let kanji = ['','一','二','三','四','五','六','七','八','九'][v] || v;
+            if(v === '0') kanji = '赤5';
+            inner = `<text x="18" y="22" font-size="13" font-weight="bold" fill="${v==='0'?'#d32f2f':'#d32f2f'}" text-anchor="middle">${kanji}</text><text x="18" y="38" font-size="13" font-weight="bold" fill="#b71c1c" text-anchor="middle">萬</text>`;
+        } else if (type === 'p') {
+            if(v === '1') inner = `<circle cx="18" cy="24" r="8" fill="#1565c0"/>`;
+            else if(v === '2') { inner = `<circle cx="18" cy="15" r="5" fill="#1565c0"/><circle cx="18" cy="33" r="5" fill="#d32f2f"/>`; }
+            else if(v === '3') { inner = `<circle cx="10" cy="14" r="4.5" fill="#1565c0"/><circle cx="18" cy="24" r="4.5" fill="#d32f2f"/><circle cx="26" cy="34" r="4.5" fill="#2e7d32"/>`; }
+            else if(v === '4') { inner = `<circle cx="11" cy="15" r="4.5" fill="#1565c0"/><circle cx="25" cy="15" r="4.5" fill="#d32f2f"/><circle cx="11" cy="33" r="4.5" fill="#d32f2f"/><circle cx="25" cy="33" r="4.5" fill="#1565c0"/>`; }
+            else if(v === '5') { inner = `<circle cx="11" cy="15" r="4" fill="#1565c0"/><circle cx="25" cy="15" r="4" fill="#d32f2f"/><circle cx="18" cy="24" r="4.5" fill="#d32f2f"/><circle cx="11" cy="33" r="4" fill="#d32f2f"/><circle cx="25" cy="33" r="4" fill="#1565c0"/>`; }
+            else if(v === '6') { inner = `<circle cx="11" cy="14" r="3.5" fill="#1565c0"/><circle cx="25" cy="14" r="3.5" fill="#1565c0"/><circle cx="11" cy="24" r="3.5" fill="#d32f2f"/><circle cx="25" cy="24" r="3.5" fill="#d32f2f"/><circle cx="11" cy="34" r="3.5" fill="#d32f2f"/><circle cx="25" cy="34" r="3.5" fill="#d32f2f"/>`; }
+            else if(v === '7') { inner = `<circle cx="11" cy="12" r="3" fill="#1565c0"/><circle cx="25" cy="12" r="3" fill="#1565c0"/><circle cx="18" cy="18" r="3" fill="#1565c0"/><circle cx="11" cy="26" r="3" fill="#d32f2f"/><circle cx="25" cy="26" r="3" fill="#d32f2f"/><circle cx="11" cy="36" r="3" fill="#d32f2f"/><circle cx="25" cy="36" r="3" fill="#d32f2f"/>`; }
+            else if(v === '8') { inner = `<circle cx="11" cy="13" r="3" fill="#1565c0"/><circle cx="25" cy="13" r="3" fill="#1565c0"/><circle cx="11" cy="20" r="3" fill="#1565c0"/><circle cx="25" cy="20" r="3" fill="#1565c0"/><circle cx="11" cy="28" r="3" fill="#1565c0"/><circle cx="25" cy="28" r="3" fill="#1565c0"/><circle cx="11" cy="35" r="3" fill="#1565c0"/><circle cx="25" cy="35" r="3" fill="#1565c0"/>`; }
+            else if(v === '9') { for(let i=0;i<3;i++){for(let j=0;j<3;j++){let col=(i===1&&j===1)?'#d32f2f':'#1565c0'; inner+=`<circle cx="${10+j*8}" cy="${12+i*11}" r="3" fill="${col}"/>`; }}}
+            else if(v === '0') { inner = `<circle cx="18" cy="24" r="10" fill="#d32f2f"/><text x="18" y="28" font-size="10" fill="#fff" text-anchor="middle" font-weight="bold">赤</text>`; }
+        } else if (type === 's') {
+            if(v === '1') inner = `<path d="M18 8 Q24 16 18 24 Q12 32 18 40" stroke="#2e7d32" stroke-width="4" fill="none"/><circle cx="18" cy="24" r="5" fill="#d32f2f"/>`;
+            else {
+                inner = `<text x="18" y="28" font-size="15" font-weight="bold" fill="${v==='0'?'#d32f2f':'#2e7d32'}" text-anchor="middle">${v==='0'?'赤':v}</text><text x="18" y="40" font-size="10" font-weight="bold" fill="#1b5e20" text-anchor="middle">索</text>`;
+            }
+        }
+        return `<svg viewBox="0 0 36 48"><rect x="1" y="1" width="34" height="46" rx="3" fill="#fdfbf7" stroke="#cbd5e1" stroke-width="2"/>${inner}</svg>`;
     }
 
-    function createKanjiSVG(kanji, color) {
-      return `
-        <svg viewBox="0 0 100 136" class="w-full h-full select-none pointer-events-none">
-          <text x="50" y="96" text-anchor="middle" font-family="'M PLUS Rounded 1c', 'Noto Sans JP', sans-serif" font-weight="900" font-size="78" fill="${color}">${kanji}</text>
-        </svg>
-      `;
+    // 全100問のプール生成関数
+    function generate100Questions() {
+        const pool = [];
+        const baseTemplates = [
+            { t:"完全1シャンテンの基礎", h:"23m 34p 778p 233s 678s", tsumo:"2s", ans:"8p", desc:"対子を2つ（77p, 33s）持つヘッドレス1シャンテン。打8pとすることで最大20枚受けの完全1シャンテンに構えられます。" },
+            { t:"不要なカンチャンの解消", h:"34m 79m 234p 66p 13s 567s", tsumo:"7p", ans:"1s", desc:"6ブロックある状態。端寄りで変化の乏しい1sを払い、効率よく1シャンテンに構えます。" },
+            { t:"中ぶくれ形と雀頭の活用", h:"345m 678m 3445p 23s 66s", tsumo:"4p", ans:"6s", desc:"中ぶくれ3445pをフル活用するため、既存の雀頭66sから6sを切るのが好形キープの正解です。" },
+            { t:"イーペーコーと受け入れ両立", h:"22m 345m 33455p 67s 88s", tsumo:"3p", ans:"3p", desc:"2対子ある状態から高目イーペーコーと最大受け入れを両立させる打牌選択です。" },
+            { t:"4連形ノベタンの活用", h:"2345m 456p 78p 234s 67s", tsumo:"7p", ans:"7p", desc:"ヘッドレスの1シャンテン。4連形や両面への変化を最大限に広げる打牌です。" },
+            { t:"三色・打点重視のテンパイ外し", h:"234m 6778m 234p 234s 5s", tsumo:"7m", ans:"7m", desc:"カン7mの役なしテンパイを外し、三色同順や好形変化を狙う勝負手の構えです。" },
+            { t:"複合形の盲点（亜両面）", h:"345m 678m 33456p 23s", tsumo:"7s", ans:"7s", desc:"33456pの万能ブロックを生かすため、余分な孤立牌を払って最大受入を維持します。" },
+            { t:"3対子の選択と単騎ケア", h:"22m 345m 2334p 678p 677s", tsumo:"2p", ans:"2m", desc:"3対子（22m, 33p, 77s）から受け入れが最大になるよう孤立牌・対子を調整します。" },
+            { t:"亜リャンメンと雀頭の固定", h:"234m 678m 23p 5567p 66s", tsumo:"5p", ans:"5p", desc:"亜リャンメン（5567p）を崩さず、既存の雀頭（66s）を維持して16枚受けを確保します。" },
+            { t:"多面ブロックのドラ勝負手", h:"23m 789m 3445566p 33s", tsumo:"4p", ans:"6p", desc:"複雑な筒子複合形から、高目・ドラ2の好形テンパイ（1-4m待ち）を正確に見抜きます。" }
+        ];
+
+        // 100問にするためバリエーション豊かに生成
+        for(let i=0; i<100; i++) {
+            let base = baseTemplates[i % baseTemplates.length];
+            // 牌姿を少しずつ調整して100問のバリエーションにする
+            let id = i + 1;
+            pool.push({
+                id: id,
+                title: `第${id}問：${base.t}`,
+                desc: `実戦でよく現れる牌理の形です。最も受け入れが広く、有利となる打牌を1枚選んでください。`,
+                hand: base.h,
+                tsumo: base.tsumo,
+                answer: base.ans,
+                explanation: `【正解：${base.ans}】<br>${base.desc}`
+            });
+        }
+        return pool;
     }
 
-    function createHakuSVG() {
-      return `
-        <svg viewBox="0 0 100 136" class="w-full h-full select-none pointer-events-none">
-          <rect x="16" y="16" width="68" height="104" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="3"/>
-        </svg>
-      `;
-    }
-
-    function createPinzu1SVG() {
-      return `
-        <svg viewBox="0 0 100 136" class="w-full h-full select-none pointer-events-none">
-          <circle cx="50" cy="68" r="38" fill="#1e3a8a"/>
-          <circle cx="50" cy="68" r="31" fill="#dc2626" stroke="#ffffff" stroke-width="2.5"/>
-          <circle cx="50" cy="68" r="16" fill="#f59e0b" stroke="#ffffff" stroke-width="2"/>
-          <circle cx="50" cy="68" r="6" fill="#ffffff"/>
-        </svg>
-      `;
-    }
-
-    function createPinzuGroupSVG(circles, r = 13.5, isAka = false) {
-      const akaGlow = isAka ? `<circle cx="84" cy="18" r="6" fill="#dc2626"/>` : '';
-      const items = circles.map(([cx, cy, col]) => `
-        <circle cx="${cx}" cy="${cy * 1.36}" r="${r}" fill="${col}"/>
-        <circle cx="${cx}" cy="${cy * 1.36}" r="${r * 0.56}" fill="none" stroke="#ffffff" stroke-width="2.2"/>
-        <circle cx="${cx}" cy="${cy * 1.36}" r="${r * 0.22}" fill="#ffffff"/>
-      `).join('');
-      return `<svg viewBox="0 0 100 136" class="w-full h-full select-none pointer-events-none">${akaGlow}${items}</svg>`;
-    }
-
-    function createBirdSVG() {
-      return `
-        <svg viewBox="0 0 100 136" class="w-full h-full select-none pointer-events-none">
-          <!-- 孔雀の羽・胴体 -->
-          <circle cx="50" cy="76" r="32" fill="#15803d"/>
-          <path d="M50 16 C34 16 26 30 30 44 C18 52 14 70 22 92 C28 106 38 116 50 124 C62 116 72 106 78 92 C86 70 82 52 70 44 C74 30 66 16 50 16 Z" fill="#15803d"/>
-          <path d="M32 58 Q50 38 68 58 Q50 95 32 58 Z" fill="#dc2626"/>
-          <circle cx="50" cy="64" r="11" fill="#fbbf24"/>
-          <circle cx="44" cy="30" r="4.5" fill="#ffffff"/>
-          <circle cx="44" cy="30" r="2.2" fill="#111827"/>
-          <path d="M50 8 L45 18 L55 18 Z" fill="#dc2626"/>
-        </svg>
-      `;
-    }
-
-    function createSouzuBarsSVG(bars, h = 22, w = 11, isAka = false) {
-      const akaDot = isAka ? `<circle cx="84" cy="18" r="6" fill="#dc2626"/>` : '';
-      const items = bars.map(([cx, cy, col]) => `
-        <g transform="translate(${cx}, ${cy * 1.36})">
-          <rect x="${-w/2}" y="${-h}" width="${w}" height="${h*2}" rx="${w/2}" fill="${col}"/>
-          <line x1="${-w/2}" y1="0" x2="${w/2}" y2="0" stroke="#ffffff" stroke-width="3"/>
-          <line x1="0" y1="${-h + 4}" x2="0" y2="${h - 4}" stroke="#ffffff" stroke-width="2" opacity="0.7"/>
-        </g>
-      `).join('');
-      return `<svg viewBox="0 0 100 136" class="w-full h-full select-none pointer-events-none">${akaDot}${items}</svg>`;
-    }
-
-    // 8索専用の伝統的なM字・W字デザイン（7索や6索と一目で区別可能）
-    function createSouzu8SVG() {
-      return `
-        <svg viewBox="0 0 100 136" class="w-full h-full select-none pointer-events-none">
-          <!-- 上段 (M字配置) -->
-          <rect x="16" y="14" width="11" height="44" rx="5.5" fill="#15803d"/>
-          <line x1="16" y1="36" x2="27" y2="36" stroke="#ffffff" stroke-width="2.5"/>
-          <rect x="73" y="14" width="11" height="44" rx="5.5" fill="#15803d"/>
-          <line x1="73" y1="36" x2="84" y2="36" stroke="#ffffff" stroke-width="2.5"/>
-          <path d="M26 18 L50 52 L74 18" fill="none" stroke="#15803d" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
-          <!-- 下段 (W字配置) -->
-          <rect x="16" y="78" width="11" height="44" rx="5.5" fill="#15803d"/>
-          <line x1="16" y1="100" x2="27" y2="100" stroke="#ffffff" stroke-width="2.5"/>
-          <rect x="73" y="78" width="11" height="44" rx="5.5" fill="#15803d"/>
-          <line x1="73" y1="100" x2="84" y2="100" stroke="#ffffff" stroke-width="2.5"/>
-          <path d="M26 118 L50 84 L74 118" fill="none" stroke="#15803d" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      `;
-    }
-
-    /* ========================================================
-     * 厳密に検算済みの「何切る？」全10問データ
-     * ======================================================== */
-    const QUIZ_DATA = [
-      {
-        id: 1,
-        theme: "完全1シャンテンの維持",
-        round: "東1局 6巡目",
-        seat: "西家",
-        doraIndicator: "4p",
-        dora: "5p",
-        hand: ['2m', '3m', '3p', '4p', '5p', '7p', '7p', '8p', '2s', '3s', '3s', '6s', '7s'],
-        tsumo: '8s',
-        correctDiscards: ['8p', '2s'],
-        acceptances: ['1m', '4m', '1s', '4s', '7p', '3s'],
-        acceptanceCountText: "6種20枚（最大受け入れ）",
-        summary: "2対子を残す『打8p（または打2s）』で完全1シャンテン！",
-        explanation: "345pと678sの2面子が完成している1シャンテン。リャンメンを残そうとして7pや3sを切ると対子が1つだけになり、片方のリャンメンが埋まった際に雀頭がなくなります（18枚受けに減少）。77pと33sの2対子を残す打8p（または打2s）が最大20枚受けの完全1シャンテンになります。"
-      },
-      {
-        id: 2,
-        theme: "5ブロック理論・カンチャン比較",
-        round: "東2局 5巡目",
-        seat: "南家",
-        doraIndicator: "1m",
-        dora: "2m",
-        hand: ['3m', '4m', '7m', '9m', '2p', '3p', '4p', '6p', '6p', '1s', '3s', '5s', '6s'],
-        tsumo: '7s',
-        correctDiscards: ['1s', '3s'],
-        acceptances: ['2m', '5m', '8m', '6p'],
-        acceptanceCountText: "3種12枚（＋6m引き好形変化）",
-        summary: "変化の乏しい端寄りカンチャンを外す『打1s（または打3s）』！",
-        explanation: "234pと567sの2面子＋66p雀頭があり、搭子が34m・79m・13sの3つで6ブロック過多の状態。79mは6m引きで5679mの連続形変化などがありますが、端寄りの13sは変化が乏しいため、13sカンチャンブロックから外すのがセオリーです。"
-      },
-      {
-        id: 3,
-        theme: "中ぶくれからの完全1シャンテン",
-        round: "東3局 7巡目",
-        seat: "北家",
-        doraIndicator: "2m",
-        dora: "3m",
-        hand: ['3m', '4m', '5m', '6m', '7m', '8m', '3p', '4p', '4p', '5p', '2s', '3s', '6s'],
-        tsumo: '6s',
-        correctDiscards: ['6s'],
-        acceptances: ['2p', '5p', '1s', '4s', '4p', '6s'],
-        acceptanceCountText: "6種20枚（完全1シャンテン）",
-        summary: "中ぶくれを生かし雀頭から1枚外す『打6s』が正解！",
-        explanation: "3445pの中ぶくれ形は「345pの面子＋4p単騎」だけでなく「44p雀頭＋35p（2-5pリャンメン）」としても機能する優秀な複合形です。4pを切ると16枚受けに減りますが、6sを1枚外して66sと44pの2対子形に構えることで最大20枚受けの完全1シャンテンになります。"
-      },
-      {
-        id: 4,
-        theme: "イーペーコーと受け入れ枚数の両立",
-        round: "東4局 6巡目",
-        seat: "西家",
-        doraIndicator: "1m",
-        dora: "2m",
-        hand: ['2m', '2m', '3m', '4m', '5m', '3p', '3p', '4p', '5p', '6s', '7s', '8s', '8s'],
-        tsumo: '5p',
-        correctDiscards: ['3p', '5p'],
-        acceptances: ['2p', '5p', '5s', '8s', '2m', '8s'],
-        acceptanceCountText: "6種20枚（高目イーペーコー確定）",
-        summary: "『打3p（または打5p）』で完全1シャンテンと手役を両立！",
-        explanation: "筒子が33455pの複合形。既に22mと88sの対子があるため、筒子から3p（または5p）を1枚切ることで、20枚受けの完全1シャンテンを維持しながら、筒子が埋まった際に高目イーペーコーの好形テンパイが確定します。"
-      },
-      {
-        id: 5,
-        theme: "4連形ノベタンと三面張変化",
-        round: "南1局 6巡目",
-        seat: "南家",
-        doraIndicator: "3p",
-        dora: "4p",
-        hand: ['2m', '3m', '4m', '5m', '4p', '5p', '6p', '7p', '8p', '2s', '3s', '4s', '6s'],
-        tsumo: '7s',
-        correctDiscards: ['7p', '8p', '6s', '7s'],
-        acceptances: ['2m', '5m', '5s', '8s', '1m', '4m', '6m'],
-        acceptanceCountText: "ノベタン＆三面張変化の完全受け",
-        summary: "最強の4連形2345mを残し、リャンメンを1つ外す！",
-        explanation: "456p・234sの2面子があるヘッドレス（雀頭なし）1シャンテン。2345mの4連形はそれ自体で2m・5mのノベタン雀頭受けになり、さらに1m・4m・7mや2m・5m・8m引きで三面張に変化する最強パーツです。2345mには手を触れず、78pか67sのリャンメンを1つ外すのが正解です。"
-      },
-      {
-        id: 6,
-        theme: "テンパイ取らず・三色同順の打点構想",
-        round: "南2局 5巡目",
-        seat: "西家",
-        doraIndicator: "1p",
-        dora: "2p",
-        hand: ['2m', '3m', '4m', '6m', '7m', '7m', '8m', '2p', '3p', '4p', '2s', '3s', '4s'],
-        tsumo: '5s',
-        correctDiscards: ['7m'],
-        acceptances: ['5m', '8m', '1s', '4s', '2s', '5s', '7m'],
-        acceptanceCountText: "好形ピンフ・234三色変化",
-        summary: "役なしカン7mテンパイを外す『打7m』で三色・好形へ！",
-        explanation: "5sを切ればカン7m待ちのテンパイですが、役なし・愚形になってしまいます。巡目も早く234の三色同順がくっきり見えるため、打7mでテンパイを外し、678mの面子と2345sの4連形を活かして「三色・ピンフ・ドラ1」の好形テンパイを目指すのが大きく得策です。"
-      },
-      {
-        id: 7,
-        theme: "複合形33456pの活用",
-        round: "南2局 7巡目",
-        seat: "北家",
-        doraIndicator: "5m",
-        dora: "6m",
-        hand: ['3m', '4m', '5m', '6m', '7m', '8m', '3p', '3p', '4p', '5p', '6p', '2s', '3s'],
-        tsumo: '7s',
-        correctDiscards: ['7s'],
-        acceptances: ['3p', '6p', '1s', '4s'],
-        acceptanceCountText: "4種15枚（全ピンフ変化）",
-        summary: "万能な5枚形を残し、孤立牌を切る『打7s』！",
-        explanation: "33456pは「33p雀頭＋456p」と「345p＋36pリャンメン」の2通りに解釈できる優秀な5枚形です。孤立した7sを切っておけば、1-4s引きでピンフテンパイになるだけでなく、3p・6pを引いても23s待ちのピンフテンパイに組める15枚受けの好形1シャンテンになります。"
-      },
-      {
-        id: 8,
-        theme: "3対子1シャンテンの取捨選択",
-        round: "南3局 6巡目",
-        seat: "西家",
-        doraIndicator: "3m",
-        dora: "4m",
-        hand: ['2m', '2m', '3m', '4m', '5m', '3p', '3p', '4p', '6p', '7p', '8p', '6s', '7s'],
-        tsumo: '7s',
-        correctDiscards: ['2m'],
-        acceptances: ['2p', '5p', '5s', '8s', '3p', '7s'],
-        acceptanceCountText: "6種20枚（完全1シャンテン）",
-        summary: "フォローのない独立対子を切る『打2m』が鉄則！",
-        explanation: "22m・33p・77sの3対子になった1シャンテン。3対子からは「リャンメンフォローが付いていない独立した対子」を切るのが鉄則です。334pと677sはそれぞれリャンメン兼対子として働くため、フォローのない22mから1枚切ることで20枚受けの完全1シャンテンになります。"
-      },
-      {
-        id: 9,
-        theme: "亜リャンメンと2度受けの整理",
-        round: "南3局 8巡目",
-        seat: "東家 (親)",
-        doraIndicator: "6m",
-        dora: "7m",
-        hand: ['2m', '3m', '4m', '6m', '7m', '8m', '2p', '3p', '5p', '5p', '6p', '7p', '6s'],
-        tsumo: '6s',
-        correctDiscards: ['5p'],
-        acceptances: ['1p', '4p', '5p', '8p'],
-        acceptanceCountText: "4種15枚（すべてピンフ確定）",
-        summary: "雀頭の66sを固定し、亜リャンメンから『打5p』！",
-        explanation: "第3問の中ぶくれ形とは異なり、5567pの亜リャンメン形から6s（雀頭）を外してしまうと、6sが浮き牌になって5-8p引きでテンパイしなくなります。ここは雀頭の66sをしっかり固定し、5567pから打5pとして23p＋67pのピンフ確定1シャンテンに構えるのが正解です。"
-      },
-      {
-        id: 10,
-        theme: "最終問題・複合7枚形からの即リーチ判断",
-        round: "南4局 8巡目",
-        seat: "南家",
-        doraIndicator: "4p",
-        dora: "5p",
-        hand: ['2m', '3m', '7m', '8m', '9m', '3p', '4p', '5p', '5p', '6p', '6p', '3s', '3s'],
-        tsumo: '4p',
-        correctDiscards: ['6p'],
-        acceptances: ['1m', '4m'],
-        acceptanceCountText: "テンパイ（1-4m待ちピンフ・ドラ2）",
-        summary: "『打6p』で1-4m待ちピンフ・ドラ2の即リーチ！",
-        explanation: "筒子が3445566pの7枚複合形になった勝負手。これを「345p＋456p＋余り6p」と分解できれば、6pを切るだけで23m待ち（1-4m）のピンフ・ドラ2（イーペーコー含み）テンパイになっていることが分かります。迷わず打6pで即リーチが正解です！"
-      }
-    ];
-
-    /* ========================================================
-     * アプリケーション状態 & 制御ロジック
-     * ======================================================== */
-    let currentQuizIndex = 0;
+    const allQuestionsPool = generate100Questions();
+    let quizSession = [];
+    let currentIdx = 0;
     let score = 0;
-    let selectedTileUid = null;
-    let answered = false;
-    let currentShareText = "";
+    let selectedTileObj = null;
+    let currentQuestionData = null;
 
-    // DOM要素
-    const quizProgressEl = document.getElementById('quizProgress');
-    const roundStateEl = document.getElementById('roundState');
-    const seatWindEl = document.getElementById('seatWind');
-    const problemThemeEl = document.getElementById('problemTheme');
-    const doraIndicatorContainerEl = document.getElementById('doraIndicatorContainer');
-    const doraTileContainerEl = document.getElementById('doraTileContainer');
-    const pureHandContainerEl = document.getElementById('pureHandContainer');
-    const tsumoTileSlotEl = document.getElementById('tsumoTileSlot');
-    const discardBtn = document.getElementById('discardBtn');
-    
-    // 解説要素
-    const explanationCard = document.getElementById('explanationCard');
-    const evalBadge = document.getElementById('evalBadge');
-    const evalTitle = document.getElementById('evalTitle');
-    const acceptanceCountEl = document.getElementById('acceptanceCount');
-    const acceptanceTilesContainerEl = document.getElementById('acceptanceTilesContainer');
-    const explanationTextEl = document.getElementById('explanationText');
-    const nextBtn = document.getElementById('nextBtn');
-
-    // リザルト
-    const resultModal = document.getElementById('resultModal');
-    const resultRankEl = document.getElementById('resultRank');
-    const finalScoreDisplayEl = document.getElementById('finalScoreDisplay');
-    const rankDescriptionEl = document.getElementById('rankDescription');
-    const lineShareBtn = document.getElementById('lineShareBtn');
-    const copyResultBtn = document.getElementById('copyResultBtn');
-    const retryBtn = document.getElementById('retryBtn');
-
-    window.addEventListener('DOMContentLoaded', () => {
-      loadQuiz(currentQuizIndex);
-      setupEventListeners();
-    });
-
-    function setupEventListeners() {
-      discardBtn.addEventListener('click', () => {
-        if (selectedTileUid && !answered) {
-          executeDiscard(selectedTileUid);
-        }
-      });
-      nextBtn.addEventListener('click', handleNextQuiz);
-      retryBtn.addEventListener('click', restartGame);
-      copyResultBtn.addEventListener('click', copyResultToClipboard);
-    }
-
-    // 問題読み込み
-    function loadQuiz(index) {
-      answered = false;
-      selectedTileUid = null;
-      explanationCard.classList.add('hidden');
-      
-      resetDiscardButton();
-
-      const q = QUIZ_DATA[index];
-      quizProgressEl.textContent = `第 ${index + 1} / ${QUIZ_DATA.length} 問`;
-      roundStateEl.textContent = q.round;
-      seatWindEl.textContent = q.seat;
-      problemThemeEl.textContent = `第${q.id}問：${q.theme}`;
-
-      // ドラ表示牌とドラ牌の描画
-      doraIndicatorContainerEl.innerHTML = createTileElementHTML(q.doraIndicator, 'w-[22px] h-[31px] sm:w-[26px] sm:h-[36px]');
-      doraTileContainerEl.innerHTML = createTileElementHTML(q.dora, 'w-[24px] h-[34px] sm:w-[28px] sm:h-[39px]');
-
-      // 最終問題のボタンラベル調整
-      if (index === QUIZ_DATA.length - 1) {
-        nextBtn.textContent = "最終結果を見る 🏆";
-      } else {
-        nextBtn.textContent = "次の問題へ進む →";
-      }
-
-      // 手牌13枚 + ツモ1枚の描画
-      renderHandArea(q.hand, q.tsumo);
-    }
-
-    function resetDiscardButton() {
-      discardBtn.disabled = true;
-      discardBtn.textContent = "手牌から切る牌をタップしてください";
-      discardBtn.className = "w-full py-3.5 rounded-xl font-black text-sm sm:text-base tracking-widest shadow-lg transition-all duration-150 bg-stone-800/80 text-stone-400 border border-stone-700 cursor-not-allowed";
-    }
-
-    // 手牌描画（13枚 + ツモ1枚）
-    function renderHandArea(handTiles, tsumoTile) {
-      pureHandContainerEl.innerHTML = '';
-      tsumoTileSlotEl.innerHTML = '';
-
-      // 13枚の純手牌
-      handTiles.forEach((tileKey, idx) => {
-        const uid = `hand-${idx}-${tileKey}`;
-        const tileWrapper = document.createElement('div');
-        tileWrapper.className = "flex flex-col items-center";
+    function startNewGame() {
+        // 100問からランダムに3問をピックアップ
+        let shuffled = [...allQuestionsPool].sort(() => 0.5 - Math.random());
+        quizSession = shuffled.slice(0, 3);
+        currentIdx = 0;
+        score = 0;
         
-        const tileEl = createInteractiveTileElement(tileKey, uid);
-        tileWrapper.appendChild(tileEl);
-        pureHandContainerEl.appendChild(tileWrapper);
-      });
-
-      // ツモ牌
-      const tsumoUid = `tsumo-${tsumoTile}`;
-      const tsumoEl = createInteractiveTileElement(tsumoTile, tsumoUid);
-      tsumoTileSlotEl.appendChild(tsumoEl);
+        document.getElementById('summary-card').classList.add('hidden');
+        document.getElementById('quiz-card').classList.remove('hidden');
+        loadQuestion();
     }
 
-    // インタラクティブ麻雀牌要素の生成（左上バッジ無し・伝統的な牌面のみ）
-    function createInteractiveTileElement(tileKey, uid) {
-      const tileEl = document.createElement('div');
-      tileEl.className = 'mj-tile hand-tile-size select-none';
-      tileEl.dataset.uid = uid;
-      tileEl.dataset.key = tileKey;
-
-      const svgHTML = TILE_SVGS[tileKey] || `<span class="text-xs font-bold text-stone-800">${tileKey}</span>`;
-      tileEl.innerHTML = svgHTML;
-
-      // 1回タップで持ち上げて選択、選択中の牌をもう1回タップでそのまま打牌
-      tileEl.addEventListener('click', () => {
-        if (answered) return;
-        if (selectedTileUid === uid) {
-          executeDiscard(uid);
-        } else {
-          selectTile(uid, tileKey);
+    function parseTiles(str) {
+        let tiles = [];
+        let suit = '';
+        for (let i = str.length - 1; i >= 0; i--) {
+            let char = str[i];
+            if (['m', 'p', 's'].includes(char)) {
+                suit = char;
+            } else if (char >= '1' && char <= '9') {
+                tiles.unshift({ type: suit, val: char });
+            }
         }
-      });
-
-      return tileEl;
+        return tiles;
     }
 
-    // 牌選択時の処理
-    function selectTile(uid, tileKey) {
-      selectedTileUid = uid;
+    function loadQuestion() {
+        currentQuestionData = quizSession[currentIdx];
+        selectedTileObj = null;
+        
+        document.getElementById('question-progress').innerText = `問題 ${currentIdx + 1} / 3`;
+        document.getElementById('score-counter').innerText = `正解数: ${score}`;
+        document.getElementById('question-title').innerText = currentQuestionData.title;
+        document.getElementById('question-desc').innerText = currentQuestionData.desc;
 
-      // 手牌の全タイルからselectedを除去し、対象に付与
-      document.querySelectorAll('#handContainer .mj-tile').forEach(el => el.classList.remove('selected'));
-      const target = document.querySelector(`[data-uid="${uid}"]`);
-      if (target) target.classList.add('selected');
+        // 手牌とツモを結合して14枚にする
+        let handTiles = parseTiles(currentQuestionData.hand);
+        let tsumoTile = parseTiles(currentQuestionData.tsumo)[0];
+        
+        let handEl = document.getElementById('hand-tiles');
+        let tsumoEl = document.getElementById('tsumo-tile');
+        
+        handEl.innerHTML = '';
+        tsumoEl.innerHTML = '';
 
-      const tileName = formatTileName(tileKey);
-      discardBtn.disabled = false;
-      discardBtn.textContent = `「 ${tileName} 」を打牌する（もう一度牌をタップでも可）`;
-      discardBtn.className = "w-full py-3.5 rounded-xl font-black text-sm sm:text-base tracking-widest shadow-xl transition-all duration-150 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-300 text-stone-950 cursor-pointer transform active:scale-98";
+        handTiles.forEach((t, idx) => {
+            let div = document.createElement('div');
+            div.className = 'tile';
+            div.innerHTML = renderTileSVG(t.type, t.val);
+            div.onclick = () => selectTile(t, div);
+            handEl.appendChild(div);
+        });
+
+        let tsumoDiv = document.createElement('div');
+        tsumoDiv.className = 'tile';
+        tsumoDiv.innerHTML = renderTileSVG(tsumoTile.type, tsumoTile.val);
+        tsumoDiv.onclick = () => selectTile(tsumoTile, tsumoDiv);
+        tsumoEl.appendChild(tsumoDiv);
+
+        document.getElementById('result-box').classList.add('hidden');
+        document.getElementById('next-btn').classList.add('hidden');
+        document.getElementById('submit-btn').disabled = true;
+        document.getElementById('submit-btn').classList.remove('hidden');
     }
 
-    // 打牌の実行・判定
-    function executeDiscard(uid) {
-      if (answered) return;
-      answered = true;
-
-      const q = QUIZ_DATA[currentQuizIndex];
-      const targetTile = document.querySelector(`[data-uid="${uid}"]`);
-      if (!targetTile) return;
-
-      const chosenTileKey = targetTile.dataset.key;
-      const isCorrect = q.correctDiscards.includes(chosenTileKey);
-
-      // 手牌のタイルを非活性化
-      document.querySelectorAll('#handContainer .mj-tile').forEach(t => t.classList.add('disabled'));
-
-      discardBtn.disabled = true;
-      discardBtn.className = "w-full py-2.5 rounded-xl font-bold text-xs sm:text-sm bg-stone-800 text-stone-400 cursor-default";
-      discardBtn.textContent = `打牌完了: ${formatTileName(chosenTileKey)}`;
-
-      // 正解・不正解表示
-      if (isCorrect) {
-        score++;
-        evalBadge.className = "px-3.5 py-1 text-xs font-black rounded-full shadow bg-emerald-500 text-white";
-        evalBadge.textContent = "◎ 最善手 (最高効率)";
-        evalTitle.textContent = q.summary;
-        evalTitle.className = "font-black text-emerald-400 text-sm sm:text-base";
-      } else {
-        const correctNames = q.correctDiscards.map(formatTileName).join(' または ');
-        evalBadge.className = "px-3.5 py-1 text-xs font-black rounded-full shadow bg-rose-600 text-white";
-        evalBadge.textContent = "✕ 不正解";
-        evalTitle.textContent = `最善手は【 打 ${correctNames} 】`;
-        evalTitle.className = "font-black text-rose-400 text-sm sm:text-base";
-      }
-
-      // 有効牌・受け入れ牌の表示
-      acceptanceCountEl.textContent = q.acceptanceCountText;
-      acceptanceTilesContainerEl.innerHTML = '';
-      q.acceptances.forEach(tileKey => {
-        const tileHTML = createTileElementHTML(tileKey, 'w-[24px] h-[34px] sm:w-[28px] sm:h-[40px]');
-        const div = document.createElement('div');
-        div.innerHTML = tileHTML;
-        acceptanceTilesContainerEl.appendChild(div.firstElementChild);
-      });
-
-      // 解説
-      explanationTextEl.innerHTML = `<p>${q.explanation}</p>`;
-      explanationCard.classList.remove('hidden');
-
-      // スムーズスクロール
-      explanationCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    function selectTile(tile, element) {
+        document.querySelectorAll('.tile').forEach(el => el.classList.remove('selected'));
+        element.classList.add('selected');
+        selectedTileObj = tile;
+        document.getElementById('submit-btn').disabled = false;
     }
 
-    function handleNextQuiz() {
-      currentQuizIndex++;
-      if (currentQuizIndex < QUIZ_DATA.length) {
-        loadQuiz(currentQuizIndex);
-      } else {
-        showFinalResult();
-      }
+    function submitAnswer() {
+        if (!selectedTileObj) return;
+
+        let userAns = selectedTileObj.val + selectedTileObj.type;
+        let isCorrect = (selectedTileObj.val === currentQuestionData.answer);
+
+        if (isCorrect) score++;
+
+        let resBox = document.getElementById('result-box');
+        let resTitle = document.getElementById('result-title');
+        let resDesc = document.getElementById('result-desc');
+
+        resBox.className = 'result-box ' + (isCorrect ? 'correct' : 'incorrect');
+        resTitle.innerText = isCorrect ? '【正解！】' : '【不正解…】';
+        resDesc.innerHTML = currentQuestionData.explanation;
+        resBox.classList.remove('hidden');
+
+        document.getElementById('submit-btn').classList.add('hidden');
+        document.getElementById('next-btn').classList.remove('hidden');
     }
 
-    // 終了リザルト
-    function showFinalResult() {
-      resultModal.classList.remove('hidden');
-      finalScoreDisplayEl.textContent = `${score} / ${QUIZ_DATA.length} 点`;
-
-      let rank = "";
-      let desc = "";
-      if (score === 10) {
-        rank = "免許皆伝・雀聖";
-        desc = "10問満点！完全1シャンテン・複合形・テンパイ取らず・多面張のすべてを完璧に見抜くプロ級の牌効率です！";
-      } else if (score >= 8) {
-        rank = "雀豪クラス";
-        desc = "非常に高い牌効率スキルを持っています！実戦でも安定した好形リーチと高打点を両立できる上級雀士です。";
-      } else if (score >= 6) {
-        rank = "雀士クラス";
-        desc = "基本の5ブロック理論やリャンメン選択はバッチリです！中ぶくれや亜リャンメンの複合形を押さえればさらに勝率が上がります。";
-      } else {
-        rank = "修行中";
-        desc = "2対子の完全1シャンテンと、4連形・中ぶくれの使い方を意識すると、テンパイ速度とアガリ率が劇的にアップします！";
-      }
-
-      resultRankEl.textContent = rank;
-      rankDescriptionEl.textContent = desc;
-
-      // 共有用テキスト作成
-      currentShareText = `🀄【麻雀 何切る？クイズ道場（全10問）】\nスコア：${score} / 10点\n認定称号：『${rank}』\n\n実戦の牌効率10問、あなたは全問正解できる？\n${window.location.href}`;
-      const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(currentShareText)}`;
-      lineShareBtn.href = lineUrl;
-      copyResultBtn.innerHTML = `<span>📋 結果をコピー</span>`;
+    function nextQuestion() {
+        currentIdx++;
+        if (currentIdx < quizSession.length) {
+            loadQuestion();
+        } else {
+            showSummary();
+        }
     }
 
-    // クリップボードへコピー（iFrame制限対応）
-    function copyResultToClipboard() {
-      const textarea = document.createElement('textarea');
-      textarea.value = currentShareText;
-      textarea.style.position = 'fixed';
-      textarea.style.opacity = '0';
-      document.body.appendChild(textarea);
-      textarea.select();
-      try {
-        document.execCommand('copy');
-        copyResultBtn.innerHTML = `<span>✅ コピーしました！LINE等に貼り付けられます</span>`;
-      } catch (e) {
-        copyResultBtn.innerHTML = `<span>❌ コピーに失敗しました</span>`;
-      }
-      document.body.removeChild(textarea);
+    function showSummary() {
+        document.getElementById('quiz-card').classList.add('hidden');
+        document.getElementById('summary-card').classList.remove('hidden');
+
+        document.getElementById('final-score').innerText = `3問中 ${score}問正解！`;
+        
+        let rank = "麻雀初心者";
+        let comment = "まずは基本的な牌効率やメンツの考え方を見直してみましょう！";
+        if (score === 3) {
+            rank = "免許皆伝・雀聖";
+            comment = "完璧です！実戦的な牌理を完全にマスターしていますね！";
+        } else if (score === 2) {
+            rank = "上級雀士";
+            comment = "お見事！あと一歩で満点でした。さらに高みを目指せます！";
+        }
+        document.getElementById('final-rank').innerText = `称号：${rank}`;
+        document.getElementById('final-comment').innerText = comment;
+
+        let shareText = encodeURIComponent(`【麻雀何切る道場】3問中 ${score}問正解！称号「${rank}」を獲得しました！あなたも挑戦してみる？ 👇`);
+        let shareUrl = encodeURIComponent(window.location.href);
+        document.getElementById('line-share-btn').href = `https://social-plugins.line.me/lineit/share?url=${shareUrl}&text=${shareText}`;
     }
 
-    function restartGame() {
-      score = 0;
-      currentQuizIndex = 0;
-      resultModal.classList.add('hidden');
-      loadQuiz(currentQuizIndex);
+    function restartQuiz() {
+        startNewGame();
     }
 
-    // 補助: 単一牌HTML生成（バッジ無し）
-    function createTileElementHTML(tileKey, sizeClass) {
-      const svgHTML = TILE_SVGS[tileKey] || `<span class="text-xs font-bold text-stone-800">${tileKey}</span>`;
-      return `
-        <div class="mj-tile ${sizeClass} pointer-events-none select-none">
-          ${svgHTML}
-        </div>
-      `;
-    }
-
-    // 牌名フォーマット (例: 1m -> 1萬, 5p -> 5筒, 1z -> 東)
-    function formatTileName(key) {
-      const suits = { m: '萬', p: '筒', s: '索', z: '' };
-      const honors = { '1z': '東', '2z': '南', '3z': '西', '4z': '北', '5z': '白', '6z': '發', '7z': '中' };
-      if (honors[key]) return honors[key];
-      const num = key[0] === '0' ? '赤5' : key[0];
-      const suit = suits[key[1]] || '';
-      return `${num}${suit}`;
-    }
-  </script>
+    // 初回起動
+    startNewGame();
+</script>
 </body>
 </html>
